@@ -7,6 +7,7 @@
 var app = require('../app');
 var debug = require('debug')('supervillain-api:server');
 var http = require('http');
+var mongoose = require('mongoose');
 
 /**
  * Get port from environment and store in Express.
@@ -25,7 +26,18 @@ var server = http.createServer(app);
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
+// Esperar a MongoDB y a los índices de identidad/estado OAuth.
+async function start() {
+  if (!process.env.MONGODB_URI) throw new Error('Falta MONGODB_URI.');
+  await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 15000 });
+  await Promise.all([require('../models/User').init(), require('../models/OAuthAttempt').init()]);
+  console.log('MongoDB Atlas DataBase connection successful');
+  server.listen(port, '0.0.0.0');
+}
+start().catch(() => {
+  console.error('No se pudo iniciar la API. Revisa MONGODB_URI, permisos y acceso de red a MongoDB.');
+  mongoose.disconnect().finally(() => { process.exitCode = 1; });
+});
 server.on('error', onError);
 server.on('listening', onListening);
 

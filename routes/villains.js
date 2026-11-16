@@ -6,6 +6,7 @@ const Minion = require('../models/Minion');
 const Device = require('../models/Device');
 const lairsRouter = require('./lairs');
 const pick = require('../utils/pick');
+const tokenVerify = require('../middleware/tokenVerify');
 
 const FIELDS = ['name', 'alias', 'evilLevel'];
 
@@ -22,29 +23,29 @@ function loadVillain(req, res, next) {
 }
 
 // Delegamos /:villainId/lairs al router de guaridas (antes cargamos el villano)
-router.use('/:villainId/lairs', loadVillain, lairsRouter);
+router.use('/:villainId/lairs', tokenVerify, loadVillain, lairsRouter);
 
-// GET: listar todos los villanos
-router.get('/', (req, res, next) => {
+// GET: listar todos los villanos (protegido con tokenVerify)
+router.get('/', tokenVerify, (req, res, next) => {
   Villain.find()
     .then((villains) => res.json({ message: "Sindicato del mal super cargado!!!", data: villains }))
     .catch(next);
 });
 
 // POST: contratar un nuevo villano
-router.post('/', (req, res, next) => {
+router.post('/', tokenVerify, (req, res, next) => {
   Villain.create(pick(req.body, FIELDS))
     .then((villain) => res.status(201).json({ message: "Nuevo villano registrado. El mundo tiembla.", data: villain }))
     .catch(next);
 });
 
 // GET: obtener un villano específico
-router.get('/:villainId', loadVillain, (req, res) => {
+router.get('/:villainId', tokenVerify, loadVillain, (req, res) => {
   res.json(req.villain);
 });
 
 // PUT: modificar un villano
-router.put('/:villainId', loadVillain, (req, res, next) => {
+router.put('/:villainId', tokenVerify, loadVillain, (req, res, next) => {
   req.villain.set(pick(req.body, FIELDS));
   req.villain.save()
     .then((villain) => res.json({ message: "Villano actualizado. Sus planes siguen en marcha.", data: villain }))
@@ -52,7 +53,7 @@ router.put('/:villainId', loadVillain, (req, res, next) => {
 });
 
 // DELETE: dar de baja a un villano y a todo lo que cuelga de él
-router.delete('/:villainId', loadVillain, (req, res, next) => {
+router.delete('/:villainId', tokenVerify, loadVillain, (req, res, next) => {
   Lair.find({ villain: req.villain._id })
     .then((lairs) => {
       const lairIds = lairs.map((l) => l._id);

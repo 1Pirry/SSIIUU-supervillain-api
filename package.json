@@ -1,25 +1,31 @@
 {
-  "name": "supervillain-api",
-  "version": "1.0.0",
+  "name": "supervillain-api-google-oauth",
+  "version": "2.0.0",
   "private": true,
-  "description": "VillainLair API: supervillanos, guaridas, esbirros y máquinas del juicio final (Express + Mongoose + MongoDB Atlas)",
+  "description": "VillainLair con Google OpenID Connect (OAuth 2.0) y JWT para la API",
   "engines": {
-    "node": ">=20.6"
+    "node": ">=24 <27"
   },
   "scripts": {
-    "start": "node --env-file=.env ./bin/www",
+    "start": "node ./bin/www",
+    "start:local": "node --env-file=.env ./bin/www",
     "dev": "node --env-file=.env --watch ./bin/www",
     "seed": "node --env-file=.env scripts/seed.js",
-    "test": "node --test \"test/**/*.test.js\""
+    "test": "node --test --test-concurrency=1 --test-timeout=120000 test/*.test.js",
+    "test:exercise": "node --test --test-timeout=120000 exercises/*.test.js"
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "express": "^4.22.3",
+    "express-rate-limit": "^8.2.1",
+    "jsonwebtoken": "^9.0.2",
     "mongoose": "^9.11.1",
-    "morgan": "^1.12.1"
+    "morgan": "^1.12.1",
+    "openid-client": "^6.8.9"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^10.2.3",
     "supertest": "^7.3.1"
   }
 }

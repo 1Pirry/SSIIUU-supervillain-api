@@ -1,0 +1,48 @@
+@baseUrl = http://localhost:3000
+@token = PEGA_EL_JWT_QUE_DEVUELVE_EL_CALLBACK
+@villainId = REEMPLAZA_CON_DATA_ID
+
+### 1. Login: ABRIR EN EL NAVEGADOR, no ejecutar como petición REST aislada
+# http://localhost:3000/api/auth/google
+# El navegador mantiene la cookie durante la ida a Google y el callback.
+# Tras el consentimiento, copia token del JSON en la variable de arriba.
+
+### 2. Salud pública -> 200
+GET {{baseUrl}}/health
+
+### 3. Perfil protegido -> 200
+GET {{baseUrl}}/api/users/secure
+Authorization: Bearer {{token}}
+
+### 4. Perfil sin token -> 401
+GET {{baseUrl}}/api/users/secure
+
+### 5. Crear con token -> 201; copia data._id en villainId
+POST {{baseUrl}}/api/villains
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{"name":"Gru","alias":"El Ladrón de la Luna","evilLevel":8000}
+
+### 6. Crear sin token -> 401
+POST {{baseUrl}}/api/villains
+Content-Type: application/json
+
+{"name":"Gru","alias":"El Ladrón de la Luna","evilLevel":8000}
+
+### 7. Listado sin token -> 200 ANTES del ejercicio; 401 DESPUÉS
+GET {{baseUrl}}/api/villains
+
+### 8. Listado con token -> 200 antes y después
+GET {{baseUrl}}/api/villains
+Authorization: Bearer {{token}}
+
+### 9. Ruta anidada con token -> 200 si el villano existe
+GET {{baseUrl}}/api/villains/{{villainId}}/lairs
+Authorization: Bearer {{token}}
+
+### 10. El viejo signin ya no existe -> 404
+POST {{baseUrl}}/api/users/signin
+Content-Type: application/json
+
+{}

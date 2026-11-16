@@ -4,28 +4,31 @@ const logger = require('morgan');
 const mongoose = require('mongoose');
 
 const villainsRouter = require('./routes/villains');
+const usersRouter = require('./routes/users');
+const authRouter = require('./routes/auth');
+const devicesRouter = require('./routes/devices');
+const tokenVerify = require('./middleware/tokenVerify');
 
 const app = express();
 
-// Conexión con MongoDB Atlas (la cadena de conexión vive en el .env)
-if (!process.env.MONGODB_URI) {
-  console.error('Falta la variable de entorno MONGODB_URI. Copia .env.example a .env y rellénala.');
-  process.exit(1);
-}
-mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('MongoDB Atlas DataBase connection successful'))
-  .catch((err) => {
-    console.error('No se pudo conectar con MongoDB:', err.message);
-    process.exit(1);
-  });
+// La conexión se inicia en bin/www antes de escuchar peticiones.
+if (process.env.RENDER === 'true') app.set('trust proxy', 1);
+app.disable('x-powered-by');
 
-if (process.env.NODE_ENV !== 'test') app.use(logger('dev'));
-app.use(express.json());
+if (process.env.NODE_ENV !== 'test') app.use(logger('dev', { skip: (req) => req.path.startsWith('/api/auth/') }));
+app.use(express.json({ limit: '16kb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // Montamos la ruta raíz de nuestra jerarquía
+app.get('/health', (req, res) => {
+  const ready = mongoose.connection.readyState === 1;
+  res.status(ready ? 200 : 503).json({ status: ready ? 'ok' : 'unavailable' });
+});
+app.use('/api/auth', authRouter);
+app.use('/api/users', usersRouter);
 app.use('/api/villains', villainsRouter);
+app.use('/api/devices', tokenVerify, devicesRouter);
 
 // Catch 404
 app.use(function (req, res, next) {
@@ -35,7 +38,14 @@ app.use(function (req, res, next) {
 // Error handler (JSON en lugar de vista)
 app.use(function (err, req, res, next) {
   const invalid = err.name === 'ValidationError' || err.name === 'CastError';
-  res.status(err.status || (invalid ? 400 : 500)).json({ error: err.message });
+  if (err.code === 11000) return res.status(409).json({ error: 'El usuario ya existe' });
+  const status = err.status || (invalid ? 400 : 500);
+  // La validación puede incluir el valor rechazado: no devolverlo.
+  const message = invalid ? 'Datos o identificador no válidos' :
+    status >= 500 ? 'Error interno del servidor' :
+    err.type === 'entity.parse.failed' ? 'JSON no válido' :
+    err.type === 'entity.too.large' ? 'Cuerpo de petición demasiado grande' : err.message;
+  res.status(status).json({ error: message });
 });
 
 module.exports = app;
